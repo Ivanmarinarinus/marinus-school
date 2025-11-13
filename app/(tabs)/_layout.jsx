@@ -1,12 +1,80 @@
+import { Fragment } from "react";
+import { View, Text } from "react-native";
 import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons"; // built into Expo
+
+// Re-usable tab icon w/ focused state
+function TabIcon({ name, label, focused }) {
+  return (
+    <View style={{ alignItems: "center", gap: 2 }}>
+      <Ionicons name={name} size={22} color={focused ? "#111827" : "#9CA3AF"} />
+      <Text style={{
+        fontSize: 12,
+        fontWeight: focused ? "700" : "500",
+        color: focused ? "#111827" : "#9CA3AF",
+      }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="home"     options={{ title: "Home" }} />
-      <Tabs.Screen name="bookmark" options={{ title: "Bookmark" }} />
-      <Tabs.Screen name="create"   options={{ title: "Create" }} />
-      <Tabs.Screen name="profile"  options={{ title: "Profile" }} />
-    </Tabs>
+    <Fragment>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarShowLabel: false,                 // we render label ourselves
+          tabBarActiveTintColor: "#111827",       // active text/icon color
+          tabBarInactiveTintColor: "#9CA3AF",     // inactive text/icon color
+          tabBarStyle: {                          // final bar styling
+            height: 64,
+            paddingTop: 8,
+            paddingBottom: 10,
+            borderTopWidth: 1,
+            borderTopColor: "#E5E7EB",
+            backgroundColor: "#FFFFFF",
+          },
+        }}
+      >
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="home" label="Home" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="bookmark"
+          options={{
+            title: "Bookmark",
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="bookmark" label="Bookmark" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="create"
+          options={{
+            title: "Create",
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="add-circle" label="Create" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="person" label="Profile" focused={focused} />
+            ),
+          }}
+        />
+      </Tabs>
+    </Fragment>
   );
 }
