@@ -1,49 +1,73 @@
 import { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView, View, Text, Alert } from "react-native";
-import { Link, router } from "expo-router";
-import CustomTextField from "../../components/CustomTextField";
-import CustomButton from "../../components/CustomButton";
+import { View, Text, TextInput, Pressable } from "react-native";
+import { router, Link } from "expo-router";
+import { useAuth } from "../../providers/AuthProvider";
 
-export default function SignUp() {
+export default function SignUpScreen() {
+  const { signUp } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert("Account created", `Welcome, ${username || "new user"}!`);
-      router.replace("/(auth)/sign-in");
-    }, 900);
-  };
+  async function handleSubmit() {
+    if (!username || !email || !password) return alert("Fill all fields");
+    setSubmitting(true);
+    const { error } = await signUp({ email, password, username });
+    setSubmitting(false);
+    if (error) return alert(error.message);
+    alert("Check your email to confirm the account, then sign in.");
+    router.replace("/(auth)/sign-in");
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ flex: 1, padding: 24, gap: 16, justifyContent: "center" }}>
-          <Text style={{ fontSize: 24, fontWeight: "800", color: "#111827" }}>Sign up</Text>
-          <Text style={{ color: "#6B7280", marginBottom: 4 }}>Create your account to get started.</Text>
+    <View style={{ flex: 1, padding: 20, gap: 12, justifyContent: "center", backgroundColor: "#fff" }}>
+      <Text style={{ fontSize: 28, fontWeight: "800", marginBottom: 8 }}>Create account</Text>
 
-          <CustomTextField label="Username" placeholder="yourname"
-                           value={username} onChangeText={setUsername} />
-          <CustomTextField label="Email" placeholder="you@example.com"
-                           value={email} onChangeText={setEmail}
-                           keyboardType="email-address" />
-          <CustomTextField label="Password" placeholder="Create a password"
-                           value={password} onChangeText={setPassword} secure />
+      <TextInput
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
+        style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 14 }}
+      />
+      <TextInput
+        placeholder="Email"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        value={email}
+        onChangeText={setEmail}
+        style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 14 }}
+      />
+      <TextInput
+        placeholder="Password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 14 }}
+      />
 
-          <CustomButton title={loading ? "Creating..." : "Create account"}
-                        onPress={handleSubmit} disabled={loading} />
+      <Pressable
+        onPress={handleSubmit}
+        disabled={submitting}
+        style={{
+          backgroundColor: "#111827",
+          padding: 16,
+          borderRadius: 12,
+          marginTop: 6,
+          opacity: submitting ? 0.6 : 1,
+        }}
+      >
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "700", fontSize: 16 }}>
+          {submitting ? "Creating…" : "Sign up"}
+        </Text>
+      </Pressable>
 
-          <View style={{ marginTop: 10, flexDirection: "row", justifyContent: "center", gap: 6 }}>
-            <Text style={{ color: "#6B7280" }}>Already have an account?</Text>
-            <Link href="/(auth)/sign-in" style={{ color: "#2563EB", fontWeight: "600" }}>Sign in</Link>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <Text style={{ textAlign: "center", marginTop: 12 }}>
+        Already have an account?{" "}
+        <Link href="/(auth)/sign-in" style={{ color: "#2563EB", fontWeight: "700" }}>
+          Sign in
+        </Link>
+      </Text>
+    </View>
   );
 }
