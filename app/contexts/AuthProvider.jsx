@@ -1,6 +1,11 @@
 // app/contexts/AuthProvider.jsx
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { Alert } from "react-native";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { supabase } from "../../lib/supabase";
 
 const AuthCtx = createContext(null);
@@ -9,56 +14,75 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
-  // keep session in sync
+  // Load initial user and subscribe to auth changes
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-      if (mounted) {
-        if (error) console.warn("getSession error:", error);
-        setUser(session?.user ?? null);
-        setInitializing(false);
-      }
-    })();
+    async function loadUser() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!mounted) return;
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (error) {
+          console.warn("Error getting user", error);
+          setUser(null);
+        } else {
+          setUser(data?.user ?? null);
+        }
+      } finally {
+        if (mounted) setInitializing(false);
+      }
+    }
+
+    loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setUser(session?.user ?? null);
     });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  const signUp = useCallback(async ({ email, password, username }) => {
+  const signUp = useCallback(async (email, password, username) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { username },
-        // NOTE: if you want an email confirmation link to come back to your app,
-        // set redirectTo to your dev URL, e.g. "http://localhost:8081"
-        // redirectTo: "http://localhost:8081"
       },
     });
-    if (error) throw error;
-    return data;
+
+    if (error) {
+      throw error;
+    }
+
+    return data.user;
   }, []);
 
-  const signIn = useCallback(async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+  const signIn = useCallback(async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data.user;
   }, []);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) Alert.alert("Sign out failed", error.message);
+    if (error) {
+      throw error;
+    }
   }, []);
 
   const value = { user, initializing, signUp, signIn, signOut };
@@ -68,6 +92,8 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
   return ctx;
 }

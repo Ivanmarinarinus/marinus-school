@@ -1,74 +1,86 @@
 // app/(auth)/sign-in.jsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
-import { useRouter, Link } from "expo-router";
-import { useAuth } from "../contexts/AuthProvider"; // path is correct because (auth) is inside app/
+import { View, Text } from "react-native";
+import { Link, useRouter } from "expo-router";
+import CustomTextField from "../../components/CustomTextField";
+import CustomButton from "../../components/CustomButton";
+import { useAuth } from "../contexts/AuthProvider";
 
 export default function SignInScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   async function onSubmit() {
+    setError("");
+
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
     try {
-      if (!email || !password) {
-        Alert.alert("Missing info", "Please enter email and password.");
-        return;
-      }
       setSubmitting(true);
-      await signIn({ email: email.trim(), password });
-      // success → go to tabs/home
+      await signIn(email.trim(), password);
       router.replace("/(tabs)/home");
     } catch (err) {
-      // Surface common supabase errors (e.g., email_not_confirmed)
-      Alert.alert("Sign in failed", err?.message ?? "Unknown error");
+      console.error("Sign in error", err);
+      const message = err?.message || "";
+      if (message.toLowerCase().includes("invalid login credentials")) {
+        setError("Incorrect email or password. Please try again.");
+      } else {
+        setError(message || "Failed to sign in. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12, justifyContent: "center" }}>
-      <Text style={{ fontSize: 24, fontWeight: "700", marginBottom: 6 }}>Sign in</Text>
+    <View className="flex-1 justify-center px-5 bg-white">
+      <Text className="text-3xl font-bold mb-2 text-center">Sign in</Text>
+      <Text className="text-gray-500 mb-4 text-center">
+        Enter your account details to continue.
+      </Text>
 
-      <TextInput
-        placeholder="Email"
+      {error ? (
+        <Text className="text-red-500 mb-3 text-center">{error}</Text>
+      ) : null}
+
+      <CustomTextField
+        label="Email"
+        placeholder="you@example.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        style={{ borderWidth: 1, borderColor: "#e5e7eb", padding: 12, borderRadius: 8 }}
       />
-      <TextInput
-        placeholder="Password"
+
+      <CustomTextField
+        label="Password"
+        placeholder="Your password"
+        secure
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
-        style={{ borderWidth: 1, borderColor: "#e5e7eb", padding: 12, borderRadius: 8 }}
       />
 
-      <Pressable
+      <CustomButton
+        title={submitting ? "Signing in..." : "Sign in"}
         onPress={onSubmit}
-        disabled={submitting}
-        style={{
-          backgroundColor: submitting ? "#9CA3AF" : "#111827",
-          paddingVertical: 12,
-          borderRadius: 8,
-          alignItems: "center",
-          marginTop: 6,
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "700" }}>
-          {submitting ? "Signing in..." : "Sign in"}
-        </Text>
-      </Pressable>
+        isLoading={submitting}
+        className="mt-2"
+      />
 
-      <Link href="/(auth)/sign-up" style={{ marginTop: 12 }}>
-        <Text style={{ color: "#2563eb" }}>Create an account</Text>
-      </Link>
+      <View className="mt-4 flex-row justify-center">
+        <Text className="text-gray-600">Don't have an account? </Text>
+        <Link href="/(auth)/sign-up">
+          <Text className="text-blue-600 font-semibold">Sign up</Text>
+        </Link>
+      </View>
     </View>
   );
 }

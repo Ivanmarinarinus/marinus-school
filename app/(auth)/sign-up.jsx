@@ -1,72 +1,96 @@
 // app/(auth)/sign-up.jsx
-import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, Button, Alert, StyleSheet } from "react-native";
-import { Link, router } from "expo-router";
+import React, { useState } from "react";
+import { View, Text } from "react-native";
+import { Link, useRouter } from "expo-router";
+import CustomTextField from "../../components/CustomTextField";
+import CustomButton from "../../components/CustomButton";
 import { useAuth } from "../contexts/AuthProvider";
 
 export default function SignUpScreen() {
-  const { user, initializing, signUp } = useAuth();
+  const router = useRouter();
+  const { signUp } = useAuth();
+
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!initializing && user) router.replace("/(tabs)/home");
-  }, [user, initializing]);
+  const [error, setError] = useState("");
 
   async function onSubmit() {
-    const e = email.trim().replace(/^"+|"+$/g, "").toLowerCase();
-    if (!e || !username || !password) return Alert.alert("Missing info", "All fields are required.");
-    setSubmitting(true);
-    const { error } = await signUp({ email: e, password, username });
-    setSubmitting(false);
-    if (error) Alert.alert("Sign up failed", error.message);
-    else {
-      Alert.alert(
-        "Check your email",
-        "We sent a confirmation link to verify your account. After confirming, you can sign in."
-      );
-      router.replace("/(auth)/sign-in");
+    setError("");
+
+    if (!email || !username || !password) {
+      setError("Please fill in email, username and password.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await signUp(email.trim(), password, username.trim());
+      router.replace("/(tabs)/home");
+    } catch (err) {
+      console.error("Sign up error", err);
+      let message = err?.message || "Could not create your account.";
+      if (message.toLowerCase().includes("password")) {
+        message = "Password is too weak. Please choose a stronger password.";
+      }
+      if (message.toLowerCase().includes("user already registered")) {
+        message = "An account with this email already exists. Try signing in.";
+      }
+      setError(message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create account</Text>
-      <TextInput
-        placeholder="Email"
-        autoCapitalize="none"
+    <View className="flex-1 justify-center px-5 bg-white">
+      <Text className="text-3xl font-bold mb-2 text-center">Create account</Text>
+      <Text className="text-gray-500 mb-4 text-center">
+        Sign up to start watching the latest videos.
+      </Text>
+
+      {error ? (
+        <Text className="text-red-500 mb-3 text-center">{error}</Text>
+      ) : null}
+
+      <CustomTextField
+        label="Email"
+        placeholder="you@example.com"
         keyboardType="email-address"
+        autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
       />
-      <TextInput
-        placeholder="Username"
-        autoCapitalize="none"
+
+      <CustomTextField
+        label="Username"
+        placeholder="Your display name"
         value={username}
         onChangeText={setUsername}
-        style={styles.input}
       />
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
+
+      <CustomTextField
+        label="Password"
+        placeholder="Create a password"
+        secure
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
       />
-      <Button title={submitting ? "Creating…" : "Sign up"} onPress={onSubmit} disabled={submitting} />
-      <View style={{ height: 12 }} />
-      <Link href="/(auth)/sign-in">Already have an account? Sign in</Link>
+
+      <CustomButton
+        title={submitting ? "Creating account..." : "Sign up"}
+        onPress={onSubmit}
+        isLoading={submitting}
+        className="mt-2"
+      />
+
+      <View className="mt-4 flex-row justify-center">
+        <Text className="text-gray-600">Already have an account? </Text>
+        <Link href="/(auth)/sign-in">
+          <Text className="text-blue-600 font-semibold">Sign in</Text>
+        </Link>
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: "center", gap: 12 },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  input: {
-    borderWidth: 1, borderColor: "#ccc", borderRadius: 8, paddingHorizontal: 12, height: 44,
-  },
-});
