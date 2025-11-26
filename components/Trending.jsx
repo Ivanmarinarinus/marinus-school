@@ -4,13 +4,11 @@ import { View, Text, FlatList } from "react-native";
 import EmptyState from "./EmptyState";
 
 /**
- * Trending component
+ * Trending
  *
+ * Horizontal list of trending videos.
  * Props:
- *  - posts: array of video objects with at least { id, title? }
- *
- * Shows a horizontal FlatList of trending videos.
- * If there are no posts, it shows EmptyState using ListEmptyComponent.
+ *  - posts: [{ id, title, creator }]
  */
 export default function Trending({ posts = [] }) {
   const renderItem = ({ item }) => (
@@ -21,6 +19,14 @@ export default function Trending({ posts = [] }) {
       >
         {item.title || `Video ${item.id}`}
       </Text>
+      {item.creator ? (
+        <Text
+          className="mt-1 text-xs text-gray-500"
+          numberOfLines={1}
+        >
+          {item.creator}
+        </Text>
+      ) : null}
     </View>
   );
 
@@ -31,6 +37,7 @@ export default function Trending({ posts = [] }) {
       renderItem={renderItem}
       horizontal
       showsHorizontalScrollIndicator={false}
+      // If there are no posts yet, show the EmptyState prompt
       ListEmptyComponent={<EmptyState />}
       contentContainerStyle={{ paddingVertical: 4 }}
     />
