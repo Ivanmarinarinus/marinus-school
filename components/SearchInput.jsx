@@ -7,6 +7,13 @@ export default function SearchInput({
   onChangeText,
   placeholder = "Search for a video",
 }) {
+  const handleChangeText = (text) => {
+    // Always pass the full text back up
+    if (typeof onChangeText === "function") {
+      onChangeText(text);
+    }
+  };
+
   return (
     <View className="flex-row items-center bg-gray-100 rounded-2xl px-3 py-2">
       <TextInput
@@ -14,9 +21,11 @@ export default function SearchInput({
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={handleChangeText}
         autoCapitalize="none"
         autoCorrect={false}
+        returnKeyType="search"
+        blurOnSubmit={false}
       />
       <TouchableOpacity activeOpacity={0.7}>
         {/* Simple placeholder icon */}

@@ -16,7 +16,7 @@
     "expo-linking": "~8.0.8",
     "expo-router": "~3",
     "expo-status-bar": "~3.0.8",
-    "nativewind": "4.2.1",
+    "nativewind": "^4.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "0.76.3",
@@ -31,6 +31,7 @@
   "private": true,
   "devDependencies": {
     "autoprefixer": "^10.4.22",
+    "babel-preset-expo": "^54.0.7",
     "postcss": "^8.5.6"
   }
 }
