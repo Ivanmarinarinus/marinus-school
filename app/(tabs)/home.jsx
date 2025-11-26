@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthProvider";
 import SearchInput from "../../components/SearchInput";
 import Trending from "../../components/Trending";
@@ -25,6 +26,8 @@ import {
 
 export default function Home() {
   const { user, initializing } = useAuth();
+  const router = useRouter();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -60,6 +63,11 @@ export default function Home() {
     setRefreshing(false);
   }, [refetchPosts]);
 
+  const handleSearchSubmit = (term) => {
+    // Navigate to /search/<query>
+    router.push(`/search/${encodeURIComponent(term)}`);
+  };
+
   if (initializing || loadingPosts) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -93,11 +101,12 @@ export default function Home() {
           Watch what others are posting or upload your own video.
         </Text>
 
-        {/* Search */}
+        {/* Search bar */}
         <View className="mt-4">
           <SearchInput
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmit={handleSearchSubmit}
             placeholder="Search for a video"
           />
         </View>

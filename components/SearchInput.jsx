@@ -1,16 +1,38 @@
 // components/SearchInput.jsx
 import React from "react";
-import { View, TextInput, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 
 export default function SearchInput({
   value,
   onChangeText,
+  onSubmit,
   placeholder = "Search for a video",
 }) {
   const handleChangeText = (text) => {
-    // Always pass the full text back up
     if (typeof onChangeText === "function") {
       onChangeText(text);
+    }
+  };
+
+  const handleSearchPress = () => {
+    const trimmed = (value || "").trim();
+
+    if (!trimmed) {
+      Alert.alert(
+        "Empty search",
+        "Please enter a search term before searching."
+      );
+      return;
+    }
+
+    if (typeof onSubmit === "function") {
+      onSubmit(trimmed);
     }
   };
 
@@ -26,9 +48,13 @@ export default function SearchInput({
         autoCorrect={false}
         returnKeyType="search"
         blurOnSubmit={false}
+        onSubmitEditing={handleSearchPress}
       />
-      <TouchableOpacity activeOpacity={0.7}>
-        {/* Simple placeholder icon */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={handleSearchPress}
+      >
+        {/* acts as a search / magnifying glass icon */}
         <Image
           source={require("../assets/images/favicon.png")}
           className="w-5 h-5"
