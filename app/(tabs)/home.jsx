@@ -17,7 +17,11 @@ import SearchInput from "../../components/SearchInput";
 import Trending from "../../components/Trending";
 import EmptyState from "../../components/EmptyState";
 import VideoCard from "../../components/VideoCard";
-import { useAppwrite, getAllPosts } from "../../lib/useAppwrite";
+import {
+  useAppwrite,
+  getAllPosts,
+  getLatestPosts,
+} from "../../lib/useAppwrite";
 
 export default function Home() {
   const { user, initializing } = useAuth();
@@ -29,11 +33,18 @@ export default function Home() {
     (user?.email ? user.email.split("@")[0] : null) ||
     "there";
 
+  // Main list: all posts
   const {
     data: posts,
-    loading,
-    refetch,
+    loading: loadingPosts,
+    refetch: refetchPosts,
   } = useAppwrite(getAllPosts);
+
+  // Trending list: latest 7 posts
+  const {
+    data: latestPosts,
+    loading: loadingLatest,
+  } = useAppwrite(getLatestPosts);
 
   const filteredPosts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -43,18 +54,13 @@ export default function Home() {
     );
   }, [posts, searchQuery]);
 
-  const trendingPosts = useMemo(
-    () => posts.slice(0, 5),
-    [posts]
-  );
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await refetchPosts();
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetchPosts]);
 
-  if (initializing || loading) {
+  if (initializing || loadingPosts) {
     return (
       <SafeAreaView className="flex-1 bg-white">
         <View className="flex-1 items-center justify-center">
@@ -87,6 +93,7 @@ export default function Home() {
           Watch what others are posting or upload your own video.
         </Text>
 
+        {/* Search */}
         <View className="mt-4">
           <SearchInput
             value={searchQuery}
@@ -95,18 +102,21 @@ export default function Home() {
           />
         </View>
 
+        {/* Trending section */}
         <View className="mt-6">
           <Text className="mb-2 text-lg font-semibold text-gray-900">
             Trending now
           </Text>
-          <Trending posts={trendingPosts} />
+          <Trending posts={latestPosts} loading={loadingLatest} />
         </View>
 
+        {/* Label for main list */}
         <Text className="mt-6 mb-1 text-lg font-semibold text-gray-900">
           Latest Videos
         </Text>
       </View>
 
+      {/* Main FlatList of videos */}
       <FlatList
         data={filteredPosts}
         keyExtractor={(item) => item.id}

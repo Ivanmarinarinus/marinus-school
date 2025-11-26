@@ -1,45 +1,64 @@
 // components/Trending.jsx
-import React from "react";
-import { View, Text, FlatList } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, FlatList, ActivityIndicator } from "react-native";
+import TrendingVideoCard from "./TrendingVideoCard";
 import EmptyState from "./EmptyState";
 
 /**
  * Trending
  *
- * Horizontal list of trending videos.
  * Props:
- *  - posts: [{ id, title, creator }]
+ *  - posts: array of video objects
+ *  - loading: boolean (optional)
  */
-export default function Trending({ posts = [] }) {
-  const renderItem = ({ item }) => (
-    <View className="mr-3 w-40 h-28 rounded-2xl bg-gray-100 justify-center px-3">
-      <Text
-        className="text-sm font-semibold text-gray-900"
-        numberOfLines={2}
-      >
-        {item.title || `Video ${item.id}`}
-      </Text>
-      {item.creator ? (
-        <Text
-          className="mt-1 text-xs text-gray-500"
-          numberOfLines={1}
-        >
-          {item.creator}
-        </Text>
-      ) : null}
-    </View>
-  );
+export default function Trending({ posts = [], loading = false }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (!viewableItems || viewableItems.length === 0) return;
+    const firstVisible = viewableItems[0];
+    if (firstVisible.index != null) {
+      setActiveIndex(firstVisible.index);
+    }
+  }).current;
+
+  if (loading) {
+    return (
+      <View className="w-full h-32 items-center justify-center">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!posts.length) {
+    return <EmptyState />;
+  }
 
   return (
     <FlatList
       data={posts}
       keyExtractor={(item) => item.id?.toString()}
-      renderItem={renderItem}
+      renderItem={({ item, index }) => (
+        <TrendingVideoCard
+          item={item}
+          isActive={index === activeIndex}
+        />
+      )}
       horizontal
       showsHorizontalScrollIndicator={false}
-      // If there are no posts yet, show the EmptyState prompt
-      ListEmptyComponent={<EmptyState />}
-      contentContainerStyle={{ paddingVertical: 4 }}
+      contentContainerStyle={{
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+      }}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      // These next 2 make it feel smoother when swiping
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged}
     />
   );
 }
