@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { Video } from "expo-av";
 import { useRouter } from "expo-router";
 
@@ -18,18 +18,30 @@ import FormField from "../../components/FormField";
 import CustomButton from "../../components/CustomButton";
 import { supabase } from "../../lib/supabase";
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
 const initialForm = {
   title: "",
-  video: null,      // DocumentPicker asset
-  thumbnail: null,  // DocumentPicker asset
+  video: null, // { name, type, size, uri }
+  thumbnail: null, // { name, type, size, uri }
   prompt: "",
 };
 
+// Upload helper – works for both video and thumbnail
 async function uploadToSupabase(folder, asset, isVideo) {
   if (!asset?.uri) return null;
 
+  const guessExtFromName = (name) => {
+    if (!name) return null;
+    const parts = name.split(".");
+    return parts.length > 1 ? parts.pop() : null;
+  };
+
   const ext =
-    asset.name?.split(".").pop() || (isVideo ? "mp4" : "jpg");
+    guessExtFromName(asset.name) ||
+    guessExtFromName(asset.uri.split(/[?#]/)[0]) ||
+    (isVideo ? "mp4" : "jpg");
+
   const random = Math.random().toString(36).slice(2);
   const filePath = `${folder}/${Date.now()}-${random}.${ext}`;
 
@@ -37,10 +49,10 @@ async function uploadToSupabase(folder, asset, isVideo) {
   const blob = await response.blob();
 
   const { error } = await supabase.storage
-    .from("videos") // single bucket, folders = videos/thumbnails
+    .from("videos")
     .upload(filePath, blob, {
       contentType:
-        asset.mimeType || (isVideo ? "video/mp4" : "image/jpeg"),
+        asset.type || (isVideo ? "video/mp4" : "image/jpeg"),
     });
 
   if (error) {
@@ -65,17 +77,56 @@ export default function Create() {
     user?.user_metadata?.username ||
     (user?.email ? user.email.split("@")[0] : "anonymous");
 
+  // ---- Permissions ----
+  const ensureMediaPermission = async () => {
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission needed",
+        "We need access to your gallery to pick videos and images."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // ---- Pickers using expo-image-picker ----
+
   const handlePickVideo = async () => {
+    const ok = await ensureMediaPermission();
+    if (!ok) return;
+
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["video/*"],
-        multiple: false,
-        copyToCacheDirectory: true,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1,
       });
 
       if (result.canceled) return;
-      const asset = result.assets?.[0];
-      if (!asset) return;
+
+      const file = result.assets?.[0];
+      if (!file) return;
+
+      const asset = {
+        name:
+          file.fileName ||
+          `video-${Date.now()}.mp4`,
+        type: file.mimeType || "video/mp4",
+        size: file.fileSize ?? 0,
+        uri: file.uri,
+      };
+
+      console.log("Picked video asset:", asset);
+
+      if (asset.size && asset.size > MAX_FILE_SIZE) {
+        Alert.alert(
+          "File too large",
+          "Please choose a video smaller than 50 MB."
+        );
+        return;
+      }
 
       setForm((prev) => ({ ...prev, video: asset }));
     } catch (err) {
@@ -85,16 +136,40 @@ export default function Create() {
   };
 
   const handlePickThumbnail = async () => {
+    const ok = await ensureMediaPermission();
+    if (!ok) return;
+
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*"],
-        multiple: false,
-        copyToCacheDirectory: true,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 1,
       });
 
       if (result.canceled) return;
-      const asset = result.assets?.[0];
-      if (!asset) return;
+
+      const file = result.assets?.[0];
+      if (!file) return;
+
+      const asset = {
+        name:
+          file.fileName ||
+          `thumb-${Date.now()}.jpg`,
+        type: file.mimeType || "image/jpeg",
+        size: file.fileSize ?? 0,
+        uri: file.uri,
+      };
+
+      console.log("Picked thumbnail asset:", asset);
+
+      if (asset.size && asset.size > MAX_FILE_SIZE) {
+        Alert.alert(
+          "File too large",
+          "Please choose an image smaller than 50 MB."
+        );
+        return;
+      }
 
       setForm((prev) => ({ ...prev, thumbnail: asset }));
     } catch (err) {
@@ -106,6 +181,7 @@ export default function Create() {
     }
   };
 
+  // ---- Submit ----
   const handleSubmit = async () => {
     const trimmedTitle = form.title.trim();
     if (!trimmedTitle || !form.video) {
@@ -119,7 +195,7 @@ export default function Create() {
     try {
       setIsSubmitting(true);
 
-      // Upload video + thumbnail to Supabase Storage
+      // Upload video and thumbnail
       const videoUrl = await uploadToSupabase(
         "videos",
         form.video,
@@ -134,7 +210,6 @@ export default function Create() {
           )
         : null;
 
-      // Save post row in Supabase
       const { error } = await supabase.from("posts").insert({
         title: trimmedTitle,
         creator: username,
@@ -181,10 +256,10 @@ export default function Create() {
           Upload Video
         </Text>
         <Text className="mt-1 mb-4 text-sm text-gray-500">
-          Share a new video with your followers.
+          Pick a video and thumbnail from your gallery and share it.
         </Text>
 
-        {/* Title field */}
+        {/* Title */}
         <FormField
           label="Title"
           value={form.title}
@@ -194,9 +269,9 @@ export default function Create() {
           placeholder="Give your video a title"
         />
 
-        {/* Video upload */}
+        {/* Video picker */}
         <Text className="mb-1 text-sm font-semibold text-gray-700">
-          Video
+          Video (from gallery)
         </Text>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -212,14 +287,14 @@ export default function Create() {
             />
           ) : (
             <Text className="text-sm text-gray-500">
-              Tap to select a video file
+              Tap to select a video from your gallery
             </Text>
           )}
         </TouchableOpacity>
 
-        {/* Thumbnail upload */}
+        {/* Thumbnail picker */}
         <Text className="mb-1 text-sm font-semibold text-gray-700">
-          Thumbnail
+          Thumbnail (from gallery)
         </Text>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -239,7 +314,7 @@ export default function Create() {
           )}
         </TouchableOpacity>
 
-        {/* AI Prompt */}
+        {/* Prompt */}
         <FormField
           label="AI Prompt (optional)"
           value={form.prompt}

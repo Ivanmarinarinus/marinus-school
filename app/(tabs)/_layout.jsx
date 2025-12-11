@@ -51,9 +51,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="bookmark"
         options={{
-          title: "Bookmark",
+          title: "Creator Hub",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="bookmark" label="Bookmark" focused={focused} />
+            <TabIcon name="bulb-outline" label="Ideas" focused={focused} />
           ),
         }}
       />
